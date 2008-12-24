@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{mmangino-facebooker}
+  s.name = %q{facebooker}
   s.version = "1.0.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
@@ -15,6 +15,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{facebooker}
+  s.rubygems_version = %q{1.3.0}
   s.summary = %q{Pure, idiomatic Ruby wrapper for the Facebook REST API.}
   s.test_files = ["test/test_helper.rb"]
 
