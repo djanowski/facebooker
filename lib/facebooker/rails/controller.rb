@@ -73,9 +73,12 @@ module Facebooker
       end
       
       def clear_fb_cookies!
-        fb_cookie_names.each {|name| cookies[name] = nil }
+        domain_cookie_tag = "base_domain_#{Facebooker.api_key}"
+        cookie_domain = ".#{cookies[domain_cookie_tag]}" if cookies[domain_cookie_tag]
+        fb_cookie_names.each {|name| cookies.delete(name, :domain=>cookie_domain)}
+        cookies.delete Facebooker.api_key
       end
-      
+
       def fb_cookie_prefix
         Facebooker.api_key+"_"
       end
@@ -190,7 +193,11 @@ module Facebooker
       end
       
       def request_comes_from_facebook?
-        request_is_for_a_facebook_canvas? || request_is_facebook_ajax?
+        request_is_for_a_facebook_canvas? || request_is_facebook_ajax? || request_is_fb_ping?
+      end
+
+      def request_is_fb_ping?
+        !params['fb_sig'].blank?
       end
       
       def request_is_for_a_facebook_canvas?

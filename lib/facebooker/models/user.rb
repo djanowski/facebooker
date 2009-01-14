@@ -10,7 +10,7 @@ module Facebooker
       include Model
       attr_accessor :message, :time, :status_id
     end
-    FIELDS = [:status, :political, :pic_small, :name, :quotes, :is_app_user, :tv, :profile_update_time, :meeting_sex, :hs_info, :timezone, :relationship_status, :hometown_location, :about_me, :wall_count, :significant_other_id, :pic_big, :music, :uid, :work_history, :sex, :religion, :notes_count, :activities, :pic_square, :movies, :has_added_app, :education_history, :birthday, :first_name, :meeting_for, :last_name, :interests, :current_location, :pic, :books, :affiliations, :locale, :profile_url, :proxied_email]
+    FIELDS = [:status, :political, :pic_small, :name, :quotes, :is_app_user, :tv, :profile_update_time, :meeting_sex, :hs_info, :timezone, :relationship_status, :hometown_location, :about_me, :wall_count, :significant_other_id, :pic_big, :music, :uid, :work_history, :sex, :religion, :notes_count, :activities, :pic_square, :movies, :has_added_app, :education_history, :birthday, :first_name, :meeting_for, :last_name, :interests, :current_location, :pic, :books, :affiliations, :locale, :profile_url, :proxied_email,:email_hashes]
     STANDARD_FIELDS = [:uid, :first_name, :last_name, :name, :timezone, :birthday, :sex, :affiliations, :locale, :profile_url]
     attr_accessor :id, :session
     populating_attr_accessor *FIELDS
@@ -86,7 +86,9 @@ module Facebooker
       
      	#use __blank instead of nil so that this is cached
      	cache_key = flid||"__blank"
-     	@friends_hash[cache_key] ||= @session.post('facebook.friends.get', (flid.nil? ? {} : {:flid => flid})).map do |uid|
+     	options = {:uid=>@id}
+     	options[:flid] = flid unless flid.nil?
+     	@friends_hash[cache_key] ||= @session.post('facebook.friends.get', options,false).map do |uid|
           User.new(uid, @session)
       end
       @friends_hash[cache_key]
@@ -169,8 +171,35 @@ module Facebooker
       session.get_photos(nil, nil, profile_pic_album_id)
     end
     
-    def upload_photo(multipart_post_file)
-      Photo.from_hash(session.post_file('facebook.photos.upload', {nil => multipart_post_file}))
+    # Upload a photo to the user's profile.
+    #
+    # In your view, create a multipart form that posts directly to your application (not through canvas):
+    #
+    #   <% form_tag photos_url(:canvas => false), :html => {:multipart => true, :promptpermission => 'photo_upload'} do %>
+    #     Photo: <%= file_field_tag 'photo' %>
+    #     Caption: <%= text_area_tag 'caption' %>
+    #     <%= submit_tag 'Upload Photo', :class => 'inputsubmit' %>
+    #   <% end %>
+    # 
+    # And in your controller: 
+    #
+    #   class PhotosController < ApplicationController
+    #     def create
+    #       file = Net::HTTP::MultipartPostFile.new(
+    #         params[:photo].original_filename,
+    #         params[:photo].content_type,
+    #         params[:photo].read
+    #       )
+    #     
+    #       @photo = facebook_session.user.upload_photo(file, :caption => params[:caption])
+    #       redirect_to photos_url(:canvas => true)
+    #     end
+    #   end
+    #
+    # Options correspond to http://wiki.developers.facebook.com/index.php/Photos.upload
+    def upload_photo(multipart_post_file, options = {})
+      Photo.from_hash(session.post_file('facebook.photos.upload',
+        options.merge(nil => multipart_post_file)))
     end
     
     def profile_fbml
