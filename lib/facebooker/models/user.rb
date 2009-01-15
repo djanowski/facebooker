@@ -58,12 +58,9 @@ module Facebooker
     # 
     # Set the list of friends, given an array of User objects.  If the list has been retrieved previously, will not set
     def friends=(list_of_friends,flid=nil)
-      @friends_hash ||= {}
      	flid=cast_to_friend_list_id(flid)
-     	#use __blank instead of nil so that this is cached
-     	cache_key = flid||"__blank"
      	
-      @friends_hash[cache_key] ||= list_of_friends
+      friends_hash[friends_cache_key(:uid => @id, :flid => flid)] ||= list_of_friends
     end
     
     def cast_to_friend_list_id(flid)
@@ -80,18 +77,43 @@ module Facebooker
  	  end
     ##
     # Retrieve friends
-    def friends(flid = nil)
-     	@friends_hash ||= {}
-     	flid=cast_to_friend_list_id(flid)
-      
-     	#use __blank instead of nil so that this is cached
-     	cache_key = flid||"__blank"
-     	options = {:uid=>@id}
-     	options[:flid] = flid unless flid.nil?
-     	@friends_hash[cache_key] ||= @session.post('facebook.friends.get', options,false).map do |uid|
-          User.new(uid, @session)
+    #
+    # If no arguments are given, this method returns
+    # the current user's friends.
+    #
+    # You can pass a different +uid+ in order to
+    # retrieve friends of another user:
+    #
+    #   user.friends(:uid => another_id)
+    #
+    # Additionally, you can specify a friend list ID
+    # to retrieve friends from:
+    #
+    #   user.friends(:flid => list_id)
+    #
+    def friends(*args)
+      # This is to keep backwards compatibility
+      # with the old signature of this method:
+      #
+      #   def friends(flid = nil)
+      #
+      if args.size == 1 && !args.first.kind_of?(Hash)
+        flid = args.first
+        options = {}
+      else
+        options = args.first || {}
       end
-      @friends_hash[cache_key]
+
+      options[:uid] ||= @id
+      options[:flid] ||= flid if flid
+      options[:flid] ||= cast_to_friend_list_id(flid) if options[:flid]
+
+      cache_key = friends_cache_key(options)
+
+      friends_hash[cache_key] ||= @session.post('facebook.friends.get', options,false).map do |uid|
+        User.new(uid, @session)
+      end
+      friends_hash[cache_key]
     end
     
      def friend_lists    
@@ -391,6 +413,13 @@ module Facebooker
     def merge_aid(aid, uid)
       (uid << 32) + (aid & 0xFFFFFFFF)
     end
-    
+
+    def friends_hash
+      @friends_hash ||= {}
+    end
+
+    def friends_cache_key(options)
+      "#{options[:uid]}___#{options[:flid]}"
+    end
   end
 end
